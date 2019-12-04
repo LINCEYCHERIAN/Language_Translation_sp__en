@@ -9,15 +9,9 @@ import json as json
 import logging
 import sys
 
-#logger part
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s:%(message)s:')
-file_handler = logging.FileHandler('EL_LANG.log')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+####################################################################
 
-
+# Encoder class
 class Encoder(tf.keras.Model):
     def __init__(self, vocab_size, embedding_dim, enc_units, batch_sz):
         super(Encoder, self).__init__()
@@ -145,10 +139,10 @@ def evaluate(sentence,inp_lang,targ_lang,max_length_targ,
             predicted_id = tf.argmax(predictions[0]).numpy()
             result += targ_lang.index_word[predicted_id] + ' '
             if targ_lang.index_word[predicted_id] == '<end>':
-                return result.replace('<end>',''), sentence
+                return (result.replace('<end>','')).capitalize() , sentence
             dec_input = tf.expand_dims([predicted_id], 0)
         logger.info("<p>Successfully translated: %s</p>"% result)
-        return result.replace('<end>',''), sentence
+        return (result.replace('<end>','')).capitalize(), sentence
     except:
         e = sys.exc_info()[0]
         logger.info( "<p>Error: %s</p>" % e )
@@ -162,8 +156,10 @@ def translateLang(sentence,inp_lang,targ_lang,
                         max_length_targ,max_length_inp,
                         vocab_inp_size,vocab_tar_size,
                         encoder,decoder,checkpoint)
+    print('\n\n')
     print('Input: %s' % (sentence))
     print('Predicted translation: {}'.format(result))
+    print('\n\n')
     return result
 
 #####################################################################
@@ -172,47 +168,59 @@ app = Flask(__name__)
 
 @app.route('/translate', methods=["POST"])
 def translate():
-    
     sent =request.args.get('sentence')
+    temp = 0
     if request.method == 'POST':
         sent = request.form['sentence']
         from_lang = request.form['from_lang']
         to_lang = request.form['to_lang']
-        
-    if from_lang == 'sp' and to_lang == 'en':
-        checkpoint_dir = "./checkpoint_folder_sp_en/"
-        input_tensor, target_tensor,inp_lang, targ_lang = load_dataset(path_to_file, num_examples)
-    elif from_lang  == 'en'and to_lang == 'sp':
-        checkpoint_dir = "./checkpoint_folder_en-spa/"
-        target_tensor,input_tensor,targ_lang, inp_lang = load_dataset(path_to_file, num_examples)
-    else:
-        print("\nEnter a valid language \n 1.spanish(sp) \n 2.english(en)\n\n")
-       
-    max_length_targ, max_length_inp = max_length(target_tensor), max_length(input_tensor)
-    vocab_inp_size = len(inp_lang.word_index)+1
-    vocab_tar_size = len(targ_lang.word_index)+1
-    encoder = Encoder(vocab_inp_size, embedding_dim, units, BATCH_SIZE)
-    attention_layer = BahdanauAttention(10)
-    decoder = Decoder(vocab_tar_size, embedding_dim, units, BATCH_SIZE)
-    optimizer = tf.keras.optimizers.Adam()
-    checkpoint = tf.train.Checkpoint(optimizer=optimizer,
-                                 encoder=encoder,
-                                 decoder=decoder)
-    checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir)).expect_partial()
+  
+        if from_lang == 'sp' and to_lang == 'en':
+            checkpoint_dir = "./checkpoint_folder_sp_en/"
+            input_tensor, target_tensor,inp_lang, targ_lang = load_dataset(path_to_file, num_examples)
+        elif from_lang  == 'en'and to_lang == 'sp':
+            checkpoint_dir = "./checkpoint_folder_en-spa/"
+            target_tensor,input_tensor,targ_lang, inp_lang = load_dataset(path_to_file, num_examples)
+        else:
+            temp = 1
+            print("\nEnter a valid language \n 1.spanish(sp) \n 2.english(en)\n\n")
+    if temp == 0:       
+        max_length_targ, max_length_inp = max_length(target_tensor), max_length(input_tensor)
+        vocab_inp_size = len(inp_lang.word_index)+1
+        vocab_tar_size = len(targ_lang.word_index)+1
+        encoder = Encoder(vocab_inp_size, embedding_dim, units, BATCH_SIZE)
+        attention_layer = BahdanauAttention(10)
+        decoder = Decoder(vocab_tar_size, embedding_dim, units, BATCH_SIZE)
+        optimizer = tf.keras.optimizers.Adam()
+        checkpoint = tf.train.Checkpoint(optimizer=optimizer,
+                                    encoder=encoder,
+                                    decoder=decoder)
+        checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir)).expect_partial()
 
-    translated_text = translateLang(sent,inp_lang,targ_lang,
-        max_length_targ,
-        max_length_inp,
-        vocab_inp_size,
-        vocab_tar_size,
-        encoder,
-        decoder,
-        checkpoint)
-    event['Input Sentence'] = sent
-    event["Output"] = translated_text
+        translated_text = translateLang(sent,inp_lang,targ_lang,
+            max_length_targ,
+            max_length_inp,
+            vocab_inp_size,
+            vocab_tar_size,
+            encoder,
+            decoder,
+            checkpoint)
+        
+        event['Input Sentence'] = sent
+        event["Output"] = translated_text
+    elif temp == 1:
+        event['Error'] = "Enter a valid language 1.Spanish(sp) 2.English(en)"
     return (json.dumps(event, indent=4, sort_keys=True) )
 
 ##########################################################################
+#logger part
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s:%(message)s:')
+file_handler = logging.FileHandler('EL_LANG.log')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
 event = {}
 BATCH_SIZE = 64
 embedding_dim = 256
@@ -224,6 +232,7 @@ path_to_zip = tf.keras.utils.get_file(
     extract=True)
 
 path_to_file = os.path.dirname(path_to_zip)+"/spa-eng/spa.txt"
+
 
 ########################################################################
 if __name__ == '__main__':
