@@ -168,7 +168,6 @@ app = Flask(__name__)
 
 @app.route('/translate', methods=["POST"])
 def translate():
-    sent =request.args.get('sentence')
     temp = 0
     if request.method == 'POST':
         sent = request.form['sentence']
