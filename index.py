@@ -169,20 +169,42 @@ app = Flask(__name__)
 @app.route('/translate', methods=["POST"])
 def translate():
     temp = 0
+    event = {}
     if request.method == 'POST':
         sent = request.form['sentence']
         from_lang = request.form['from_lang']
         to_lang = request.form['to_lang']
   
         if from_lang == 'sp' and to_lang == 'en':
-            checkpoint_dir = "./checkpoint_folder_sp_en/"
+
+            if os.path.isfile('~/.keras/datasets/checkpoint_folder_sp_en.tar.xz'):
+                checkpoint_dir = '~/.keras/datasets/checkpoint_folder_sp_en.tar.xz/checkpoint_folder_sp_en/'
+            # Download the file
+            else:
+                path_to_tar = tf.keras.utils.get_file(
+                'checkpoint_folder_sp_en.tar.xz',
+                origin='http://everlife-prod.s3-ap-southeast-1.amazonaws.com/checkpoint_folder_sp_en.tar.xz',
+                extract=True)
+                checkpoint_dir = os.path.dirname(path_to_tar)+"/checkpoint_folder_sp_en/"
+            
             input_tensor, target_tensor,inp_lang, targ_lang = load_dataset(path_to_file, num_examples)
         elif from_lang  == 'en'and to_lang == 'sp':
-            checkpoint_dir = "./checkpoint_folder_en-spa/"
+
+            if os.path.isfile('~/.keras/datasets/checkpoint_folder_en-spa.tar.xz'):
+                checkpoint_dir = '~/.keras/datasets/checkpoint_folder_en-spa/'
+            # Download the file
+            else:
+                path_to_tar = tf.keras.utils.get_file(
+                'checkpoint_folder_en-spa.tar.xz',
+                origin='http://everlife-prod.s3-ap-southeast-1.amazonaws.com/checkpoint_folder_en-spa.tar.xz',
+                extract=True)
+                checkpoint_dir = os.path.dirname(path_to_tar)+"/checkpoint_folder_sp_en/"
+            
             target_tensor,input_tensor,targ_lang, inp_lang = load_dataset(path_to_file, num_examples)
         else:
             temp = 1
             print("\nEnter a valid language \n 1.spanish(sp) \n 2.english(en)\n\n")
+    
     if temp == 0:       
         max_length_targ, max_length_inp = max_length(target_tensor), max_length(input_tensor)
         vocab_inp_size = len(inp_lang.word_index)+1
@@ -220,17 +242,13 @@ file_handler = logging.FileHandler('EL_LANG.log')
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
-event = {}
 BATCH_SIZE = 64
 embedding_dim = 256
 units = 1024
 num_examples = 30000
 
-path_to_zip = tf.keras.utils.get_file(
-    'spa-eng.zip', origin='http://storage.googleapis.com/download.tensorflow.org/data/spa-eng.zip',
-    extract=True)
 
-path_to_file = os.path.dirname(path_to_zip)+"/spa-eng/spa.txt"
+path_to_file = "./Dataset/spa.txt"
 
 
 ########################################################################
