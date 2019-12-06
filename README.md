@@ -4,8 +4,9 @@ Requirements:
   2. Flask
   3. Tensorflow 
         or
-      In anaconda create a conda environment for tensorflow using a) conda create -n tensorflow_env tensorflow
-                                                                  b) conda activate tensorflow_env
+      In anaconda create a conda environment for tensorflow using 
+        a) conda create -n tensorflow_env tensorflow
+        b) conda activate tensorflow_env
                                                                   
 Run the program using index.py
  
